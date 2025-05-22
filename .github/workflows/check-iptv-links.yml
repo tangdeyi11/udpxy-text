@@ -1,76 +1,75 @@
-name: 自动更新 IPTV 测试结果
+name: Check IPTV Links
 
 on:
+  workflow_dispatch:  # 手动触发
   schedule:
-    - cron: '0 */6 * * *'  # 每6小时执行一次（UTC 时间）
-  workflow_dispatch:        # 支持手动触发
+    - cron: '0 */6 * * *'  # 每6小时运行一次（UTC时间）
 
 permissions:
-  contents: write  # ✅ 允许 GitHub Actions 向代码仓库写入内容
+  contents: write  # ✅ 允许写入仓库
 
 jobs:
-  update-iptv:
+  check-iptv:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout 仓库
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
 
-      # 设置 Git 用户信息
-      - name: Set Git identity
+      - name: ⚙️ Set up Git config
         run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "github-actions"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      # 拉取远程分支的更新并解决可能的冲突
-      - name: Pull the latest changes from remote
+      - name: 📥 Download IPTV lists
         run: |
-          git pull origin main --rebase
+          curl -sL https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt -o iptv.txt
+          curl -sL https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt -o iptvdl.txt
 
-      # 测试 IPTV 链接并生成测试报告
-      - name: Test IPTV links
+      - name: 📡 Test IPTV links
         run: |
           echo "🔍 Testing links from iptv.txt..." > iptv-test.txt
           while read -r url; do
-            if [[ ! "$url" =~ ^#.* ]]; then
+            if [[ ! "$url" =~ ^#.* ]] && [[ -n "$url" ]]; then
               echo "Testing $url..."
               status="⏳ $url - 测试中..."
-              timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-              CODE=$?
-              if [ $CODE -eq 0 ]; then
+              if timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null; then
                 status="✅ $url - 可用（10秒内持续下载）"
-              elif [ $CODE -eq 124 ]; then
-                status="⚠️ $url - 有拦截（10秒内下载结束）"
               else
-                status="❌ $url - 无法访问（连接失败）"
+                CODE=$?
+                if [ $CODE -eq 124 ]; then
+                  status="⚠️ $url - 有拦截（10秒内下载结束）"
+                else
+                  status="❌ $url - 无法访问（连接失败）"
+                fi
               fi
               echo "$status" >> iptv-test.txt
             fi
           done < iptv.txt
 
+      - name: 📡 Test IPTVDL links
+        run: |
           echo "🔍 Testing links from iptvdl.txt..." > iptvdl-test.txt
           while read -r url; do
-            if [[ ! "$url" =~ ^#.* ]]; then
+            if [[ ! "$url" =~ ^#.* ]] && [[ -n "$url" ]]; then
               echo "Testing $url..."
               status="⏳ $url - 测试中..."
-              timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-              CODE=$?
-              if [ $CODE -eq 0 ]; then
+              if timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null; then
                 status="✅ $url - 可用（10秒内持续下载）"
-              elif [ $CODE -eq 124 ]; then
-                status="⚠️ $url - 有拦截（10秒内下载结束）"
               else
-                status="❌ $url - 无法访问（连接失败）"
+                CODE=$?
+                if [ $CODE -eq 124 ]; then
+                  status="⚠️ $url - 有拦截（10秒内下载结束）"
+                else
+                  status="❌ $url - 无法访问（连接失败）"
+                fi
               fi
               echo "$status" >> iptvdl-test.txt
             fi
           done < iptvdl.txt
 
-      # 提交更改并推送
-      - name: Commit and push results
+      - name: 📤 Commit and push results
         run: |
           git add --force iptv-test.txt iptvdl-test.txt
-          timestamp=$(date -u +"%Y-%m-%d %H:%M:%S")
-          git commit -m "📡 自动更新 IPTV 测试结果 on ${timestamp}" || echo "No changes to commit"
-          git push origin main
+          git commit -m "📡 自动更新 IPTV 测试结果 $(date -u '+%Y-%m-%d %H:%M:%S')" || echo "Nothing to commit"
+          git pull --rebase
+          git push
