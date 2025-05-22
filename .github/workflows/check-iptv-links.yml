@@ -85,16 +85,12 @@ jobs:
       # 提交并推送测试结果文件到 GitHub 仓库
       - name: Commit and push results for IPTV
         run: |
-          git fetch origin  # 获取最新的远程分支信息
-          git pull origin main --rebase  # 拉取远程 main 分支的最新更改并重放本地更改
           git add --force iptv-test.txt
           git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
           git push origin main  # 推送到远程仓库
 
       - name: Commit and push results for IPTVDL
         run: |
-          git fetch origin  # 获取最新的远程分支信息
-          git pull origin main --rebase  # 拉取远程 main 分支的最新更改并重放本地更改
           git add --force iptvdl-test.txt
           git commit -m "📡 自动更新 IPTVDL 测试结果" || echo "Nothing to commit"
           git push origin main  # 推送到远程仓库
