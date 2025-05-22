@@ -24,7 +24,7 @@ jobs:
 
       - name: Download links from GitHub
         run: |
-          # 下载 IPTV 和 IPTVDL 链接
+          # 下载 IPTV 和 IPTVDL 链接到根目录
           curl -L -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
           curl -L -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
 
@@ -54,16 +54,17 @@ jobs:
 
       - name: Verify the output files
         run: |
-          echo "Verifying the output files"
+          echo "Verifying the output files in the root directory"
           ls -l iptv-test.txt iptvdl-test.txt
           cat iptv-test.txt
           cat iptvdl-test.txt
 
       - name: Commit and push results
         run: |
+          # 确保文件被正确创建并添加到 Git 仓库
           echo "Verifying the output files before committing"
           ls -l iptv-test.txt iptvdl-test.txt
-          git add --force iptv-test.txt iptvdl-test.txt
+          git add --force iptv-test.txt iptvdl-test.txt  # 强制添加文件到 Git
           git status  # 查看 Git 当前状态
           git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
           git push
