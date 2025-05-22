@@ -82,6 +82,12 @@ jobs:
             echo "$status" >> "$OUTPUT_FILE"
           '
 
+      # 拉取远程仓库的更改，避免推送冲突
+      - name: Pull remote changes and rebase
+        run: |
+          git fetch origin
+          git pull --rebase origin main
+
       # 提交并推送测试结果文件到 GitHub 仓库
       - name: Commit and push results for IPTV
         run: |
