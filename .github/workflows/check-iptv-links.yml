@@ -1,0 +1,60 @@
+name: Check IPTV Links
+
+on:
+  workflow_dispatch:  # 手动触发，也可以改成 schedule: cron
+  # schedule:
+  #   - cron: '0 * * * *'
+
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许修改仓库内容
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Fetch IPTV URLs
+        run: |
+          curl -s https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt > iptv.txt
+          curl -s https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt > iptvdl.txt
+
+      - name: Test IPTV links and write results
+        run: |
+          # Function to test links
+          test_links() {
+            local input_file=$1
+            local output_file=$2
+            echo "Testing links from $input_file..." > $output_file
+            while IFS= read -r url; do
+              if [ -n "$url" ]; then
+                echo "Testing $url..."
+                timeout 10s curl -s --output /dev/null --max-time 12 --speed-time 5 --speed-limit 1024 "$url"
+                CODE=$?
+                if [ $CODE -eq 0 ]; then
+                  echo "✅ $url - 可用（10秒下载未中断）" >> $output_file
+                elif [ $CODE -eq 124 ]; then
+                  echo "⚠️ $url - 有拦截（下载在10秒内中止）" >> $output_file
+                else
+                  echo "❌ $url - 无法访问（连接失败）" >> $output_file
+                fi
+              fi
+            done < "$input_file"
+          }
+
+          # Test IPTV links
+          test_links iptv.txt iptv-test.txt
+
+          # Test IPTVDL links
+          test_links iptvdl.txt iptvdl-test.txt
+
+      - name: Commit and push results
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add iptv-test.txt iptvdl-test.txt
+          git commit -m "Update IPTV link test results"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
