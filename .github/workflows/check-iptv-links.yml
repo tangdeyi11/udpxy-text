@@ -1,27 +1,72 @@
+name: 自动更新 IPTV 测试结果
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 每6小时执行一次（UTC 时间）
+  workflow_dispatch:        # 支持手动触发运行
+
+permissions:
+  contents: write  # ✅ 允许 GitHub Actions 向代码仓库写入内容
+
 jobs:
-  test:
+  update-iptv:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout the repository
+      # Checkout 仓库
+      - name: Checkout code
         uses: actions/checkout@v2
 
+      # 设置 Git 用户信息
       - name: Set Git identity
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"
 
-      - name: Pull the latest changes
+      # 拉取远程分支的更新并解决可能的冲突
+      - name: Pull the latest changes from remote
         run: |
           git pull origin main --rebase
 
-      # 接下来的测试和推送步骤
+      # 测试 IPTV 链接并生成测试报告
       - name: Test IPTV links
         run: |
-          # 测试链接的代码
+          echo "🔍 Testing links from iptv.txt..." > iptv-test.txt
+          cat iptv.txt | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
+            CODE=$?
+            if [ $CODE -eq 0 ]; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            elif [ $CODE -eq 124 ]; then
+              status="⚠️ $url - 有拦截（10秒内下载结束）"
+            else
+              status="❌ $url - 无法访问（连接失败）"
+            fi
+            echo "$status" >> iptv-test.txt
+          '
 
+          echo "🔍 Testing links from iptvdl.txt..." > iptvdl-test.txt
+          cat iptvdl.txt | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
+            CODE=$?
+            if [ $CODE -eq 0 ]; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            elif [ $CODE -eq 124 ]; then
+              status="⚠️ $url - 有拦截（10秒内下载结束）"
+            else
+              status="❌ $url - 无法访问（连接失败）"
+            fi
+            echo "$status" >> iptvdl-test.txt
+          '
+
+      # 检查生成的文件并提交更改
       - name: Commit and push results
         run: |
-          git add --force iptv-test.txt
-          git commit --amend --no-edit -m "📡 自动更新 IPTV 测试结果"
-          git push
+          git add --force iptv-test.txt iptvdl-test.txt
+          timestamp=$(date -u +"%Y-%m-%d %H:%M:%S")
+          git commit -m "📡 自动更新 IPTV 测试结果 on ${timestamp}" || echo "No changes to commit"
+          git push origin main
