@@ -28,6 +28,11 @@ jobs:
           curl -L -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
           curl -L -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
 
+      - name: Initialize output files
+        run: |
+          # 如果文件不存在，则初始化文件
+          touch iptv-test.txt iptvdl-test.txt
+
       - name: Test links in parallel
         run: |
           input_file="${{ matrix.file }}.txt"
