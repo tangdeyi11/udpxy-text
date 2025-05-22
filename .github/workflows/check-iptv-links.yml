@@ -1,65 +1,62 @@
-name: Test UDPXY Links
+name: Test IPTV Links
 
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 0 * * *'  # 每天午夜自动运行一次
+  workflow_dispatch:
 
 jobs:
-  test-links:
+  test:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        file: [iptv, iptvdl]  # 支持并行执行
+        file: [iptv, iptvdl]  # 分别处理 'iptv.txt' 和 'iptvdl.txt' 文件
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      - name: Download IPTV and IPTVDL lists
-        run: |
-          curl -s -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
-          curl -s -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
-
-      - name: Test links in parallel
-        run: |
-          input_file=${{ matrix.file }}.txt
-          output_file=${{ matrix.file }}-test.txt
-          echo "🔍 Testing links from $input_file..." > "$output_file"
-
-          cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
-            url="$1"
-            output_file="$2"
-            status="⏳ $url - 测试中..."
-            timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-            CODE=$?
-            if [ $CODE -eq 0 ]; then
-              status="✅ $url - 可用（10秒内持续下载）"
-            elif [ $CODE -eq 124 ]; then
-              status="⚠️ $url - 有拦截（10秒内下载结束）"
-            else
-              status="❌ $url - 无法访问（连接失败）"
-            fi
-            echo "$status" >> "$output_file"
-          ' {} "$output_file"
-
-      - name: Commit and push test results
+      - name: Set up Git
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          if [ -f "iptv-test.txt" ]; then
-            git add iptv-test.txt
-          fi
+      - name: Download links from GitHub
+        run: |
+          # 下载 IPTV 和 IPTVDL 链接
+          curl -L -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
+          curl -L -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
 
-          if [ -f "iptvdl-test.txt" ]; then
-            git add iptvdl-test.txt
-          fi
+      - name: Test links in parallel
+        run: |
+          input_file="${{ matrix.file }}.txt"
+          output_file="${{ matrix.file }}-test.txt"
+          echo "🔍 Testing links from $input_file..." > "$output_file"
 
+          export OUTPUT_FILE="$output_file"  # 传递为环境变量供 subshell 使用
+
+          cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            if timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            else
+              code=$?
+              if [ $code -eq 124 ]; then
+                status="⚠️ $url - 有拦截（10秒内下载结束）"
+              else
+                status="❌ $url - 无法访问（连接失败）"
+              fi
+            fi
+            echo "$status" >> "$OUTPUT_FILE"
+          '
+
+      - name: Commit and push results
+        run: |
+          git add iptv-test.txt iptvdl-test.txt
           git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
           git push
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
