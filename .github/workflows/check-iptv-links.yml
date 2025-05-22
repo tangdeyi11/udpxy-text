@@ -2,71 +2,68 @@ name: Check IPTV Links
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # 每 6 小时运行一次（UTC 时间）
-  workflow_dispatch:        # 支持手动触发
+    - cron: '0 */6 * * *'  # 每 6 小时执行一次（UTC）
+  workflow_dispatch:       # 支持手动触发
 
 permissions:
-  contents: write  # ✅ 允许提交结果文件
+  contents: write          # ✅ 允许写入代码仓库内容
 
 jobs:
-  test-iptv:
+  check-links:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🧪 Test IPTV links and generate results
+      - name: Test IPTV links
         run: |
-          test_links() {
-            input_file="$1"
-            output_file="$2"
+          test_url() {
+            local url="$1"
+            local output_file="$2"
 
-            echo "🔍 Testing links from $input_file..." > "$output_file"
+            echo "Testing $url..."
+            start_time=$(date +%s)
 
-            while read -r url; do
-              if [[ -z "$url" || "$url" =~ ^# ]]; then
-                continue
-              fi
+            curl -s --max-time 15 "$url" -o /dev/null
+            curl_code=$?
+            end_time=$(date +%s)
+            elapsed=$((end_time - start_time))
 
-              echo "Testing $url..."
-              start_time=$(date +%s)
-
-              # 提取主机和端口
-              host=$(echo $url | cut -d'/' -f3)
-              port=$(echo $url | cut -d':' -f2)
-
-              # 使用 nc 来测试 TCP 连接
-              timeout 10 nc -z -v "$host" "$port"
-              nc_code=$?
-
-              end_time=$(date +%s)
-              elapsed=$(( end_time - start_time ))
-
-              if [[ $nc_code -eq 0 ]]; then
-                if [[ $elapsed -ge 10 ]]; then
-                  echo "✅ $url - 可用（持续连接 ${elapsed} 秒）" >> "$output_file"
-                else
-                  echo "⚠️ $url - 有拦截（${elapsed} 秒内连接结束）" >> "$output_file"
-                fi
+            if [[ $curl_code -eq 7 ]]; then
+              echo "❌ $url - 无法连接（curl 错误码 7）" >> "$output_file"
+            elif [[ $curl_code -eq 0 ]]; then
+              if [[ $elapsed -ge 10 ]]; then
+                echo "✅ $url - 可用（持续下载 ${elapsed} 秒）" >> "$output_file"
               else
-                echo "❌ $url - 无法连接（nc 错误码 $nc_code）" >> "$output_file"
+                echo "⚠️ $url - 有拦截（仅下载 ${elapsed} 秒）" >> "$output_file"
               fi
-            done < "$input_file"
+            else
+              echo "❌ $url - 异常错误（curl 错误码 $curl_code）" >> "$output_file"
+            fi
           }
 
-          test_links "iptv.txt" "iptv-test.txt"
-          test_links "iptvdl.txt" "iptvdl-test.txt"
+          echo "🔍 Testing links from iptv.txt..." > iptv-test.txt
+          while read -r url; do
+            [[ -z "$url" || "$url" =~ ^# ]] && continue
+            test_url "$url" "iptv-test.txt"
+          done < iptv.txt
 
-      - name: 📤 Commit and push results
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "🔍 Testing links from iptvdl.txt..." > iptvdl-test.txt
+          while read -r url; do
+            [[ -z "$url" || "$url" =~ ^# ]] && continue
+            test_url "$url" "iptvdl-test.txt"
+          done < iptvdl.txt
+
+      - name: Commit and push test results
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add --force iptv-test.txt iptvdl-test.txt
-          git commit -m "📡 自动更新 IPTV 测试结果 $(date -u '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add iptv-test.txt iptvdl-test.txt
+
+          timestamp=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+          git commit -m "📡 自动更新 IPTV 测试结果 - $timestamp" || echo "Nothing to commit"
+
           git pull --rebase
-          git push
+          git push origin main
