@@ -65,10 +65,10 @@ jobs:
       run: |
         git add --force iptv-test.txt
         git commit --amend --no-edit -m "📡 自动更新 IPTV 测试结果"
-        git push origin main --force  # 强制推送到远程仓库
+        git push https://github.com/tangdeyi11/udpxy-text.git HEAD:main --force  # 强制推送到远程仓库
 
     - name: Commit and push results for IPTVDL
       run: |
         git add --force iptvdl-test.txt
         git commit --amend --no-edit -m "📡 自动更新 IPTVDL 测试结果"
-        git push origin main --force  # 强制推送到远程仓库
+        git push https://github.com/tangdeyi11/udpxy-text.git HEAD:main --force  # 强制推送到远程仓库
