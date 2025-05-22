@@ -1,60 +1,54 @@
-name: Check IPTV Links
+name: Test UDPXY Links
 
 on:
-  workflow_dispatch:  # 手动触发，也可以改成 schedule: cron
-  # schedule:
-  #   - cron: '0 * * * *'
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * *'  # 每天午夜自动运行一次
 
 jobs:
-  check-links:
+  test-links:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # 允许修改仓库内容
+    strategy:
+      matrix:
+        file: [iptv, iptvdl]  # 处理两个文件：iptv.txt 和 iptvdl.txt
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Fetch IPTV URLs
+      - name: Download URL list files
         run: |
-          curl -s https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt > iptv.txt
-          curl -s https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt > iptvdl.txt
+          curl -s -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
+          curl -s -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
 
-      - name: Test IPTV links and write results
+      - name: Test ${ matrix.file } links (并发处理)
         run: |
-          # Function to test links
-          test_links() {
-            local input_file=$1
-            local output_file=$2
-            echo "Testing links from $input_file..." > $output_file
-            while IFS= read -r url; do
-              if [ -n "$url" ]; then
-                echo "Testing $url..."
-                timeout 10s curl -s --output /dev/null --max-time 12 --speed-time 5 --speed-limit 1024 "$url"
-                CODE=$?
-                if [ $CODE -eq 0 ]; then
-                  echo "✅ $url - 可用（10秒下载未中断）" >> $output_file
-                elif [ $CODE -eq 124 ]; then
-                  echo "⚠️ $url - 有拦截（下载在10秒内中止）" >> $output_file
-                else
-                  echo "❌ $url - 无法访问（连接失败）" >> $output_file
-                fi
-              fi
-            done < "$input_file"
-          }
+          input_file=${{ matrix.file }}.txt
+          output_file=${{ matrix.file }}-test.txt
+          echo "🔍 Testing links from $input_file..." > $output_file
 
-          # Test IPTV links
-          test_links iptv.txt iptv-test.txt
+          cat $input_file | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
+            CODE=$?
+            if [ $CODE -eq 0 ]; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            elif [ $CODE -eq 124 ]; then
+              status="⚠️ $url - 有拦截（10秒内下载结束）"
+            else
+              status="❌ $url - 无法访问（连接失败）"
+            fi
+            echo "$status" >> $output_file
+          '
 
-          # Test IPTVDL links
-          test_links iptvdl.txt iptvdl-test.txt
-
-      - name: Commit and push results
+      - name: Commit and push test results
         run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
           git add iptv-test.txt iptvdl-test.txt
-          git commit -m "Update IPTV link test results"
+          git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
