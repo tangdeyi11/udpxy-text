@@ -2,34 +2,37 @@ name: Test UDPXY Links
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   schedule:
     - cron: '0 0 * * *'  # 每天午夜自动运行一次
 
 jobs:
   test-links:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        file: [iptv, iptvdl]  # 处理两个文件：iptv.txt 和 iptvdl.txt
+        file: [iptv, iptvdl]  # 支持并行执行
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Download URL list files
+      - name: Download IPTV and IPTVDL lists
         run: |
           curl -s -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
           curl -s -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
 
-      - name: Test ${ matrix.file } links (并发处理)
+      - name: Test links in parallel
         run: |
           input_file=${{ matrix.file }}.txt
           output_file=${{ matrix.file }}-test.txt
-          echo "🔍 Testing links from $input_file..." > $output_file
+          echo "🔍 Testing links from $input_file..." > "$output_file"
 
-          cat $input_file | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
-            url="{}"
+          cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="$1"
+            output_file="$2"
             status="⏳ $url - 测试中..."
             timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
             CODE=$?
@@ -40,8 +43,8 @@ jobs:
             else
               status="❌ $url - 无法访问（连接失败）"
             fi
-            echo "$status" >> $output_file
-          '
+            echo "$status" >> "$output_file"
+          ' _ {} "$output_file"
 
       - name: Commit and push test results
         run: |
