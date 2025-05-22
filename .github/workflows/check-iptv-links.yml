@@ -3,7 +3,7 @@ name: 自动更新 IPTV 测试结果
 on:
   schedule:
     - cron: '0 */6 * * *'  # 每6小时执行一次（UTC 时间）
-  workflow_dispatch:        # 支持手动触发运行
+  workflow_dispatch:        # 支持手动触发
 
 permissions:
   contents: write  # ✅ 允许 GitHub Actions 向代码仓库写入内容
@@ -32,38 +32,42 @@ jobs:
       - name: Test IPTV links
         run: |
           echo "🔍 Testing links from iptv.txt..." > iptv-test.txt
-          cat iptv.txt | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
-            url="{}"
-            status="⏳ $url - 测试中..."
-            timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-            CODE=$?
-            if [ $CODE -eq 0 ]; then
-              status="✅ $url - 可用（10秒内持续下载）"
-            elif [ $CODE -eq 124 ]; then
-              status="⚠️ $url - 有拦截（10秒内下载结束）"
-            else
-              status="❌ $url - 无法访问（连接失败）"
+          while read -r url; do
+            if [[ ! "$url" =~ ^#.* ]]; then
+              echo "Testing $url..."
+              status="⏳ $url - 测试中..."
+              timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
+              CODE=$?
+              if [ $CODE -eq 0 ]; then
+                status="✅ $url - 可用（10秒内持续下载）"
+              elif [ $CODE -eq 124 ]; then
+                status="⚠️ $url - 有拦截（10秒内下载结束）"
+              else
+                status="❌ $url - 无法访问（连接失败）"
+              fi
+              echo "$status" >> iptv-test.txt
             fi
-            echo "$status" >> iptv-test.txt
-          '
+          done < iptv.txt
 
           echo "🔍 Testing links from iptvdl.txt..." > iptvdl-test.txt
-          cat iptvdl.txt | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
-            url="{}"
-            status="⏳ $url - 测试中..."
-            timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-            CODE=$?
-            if [ $CODE -eq 0 ]; then
-              status="✅ $url - 可用（10秒内持续下载）"
-            elif [ $CODE -eq 124 ]; then
-              status="⚠️ $url - 有拦截（10秒内下载结束）"
-            else
-              status="❌ $url - 无法访问（连接失败）"
+          while read -r url; do
+            if [[ ! "$url" =~ ^#.* ]]; then
+              echo "Testing $url..."
+              status="⏳ $url - 测试中..."
+              timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
+              CODE=$?
+              if [ $CODE -eq 0 ]; then
+                status="✅ $url - 可用（10秒内持续下载）"
+              elif [ $CODE -eq 124 ]; then
+                status="⚠️ $url - 有拦截（10秒内下载结束）"
+              else
+                status="❌ $url - 无法访问（连接失败）"
+              fi
+              echo "$status" >> iptvdl-test.txt
             fi
-            echo "$status" >> iptvdl-test.txt
-          '
+          done < iptvdl.txt
 
-      # 检查生成的文件并提交更改
+      # 提交更改并推送
       - name: Commit and push results
         run: |
           git add --force iptv-test.txt iptvdl-test.txt
