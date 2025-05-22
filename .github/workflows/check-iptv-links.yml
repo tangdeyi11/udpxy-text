@@ -31,28 +31,26 @@ jobs:
 
               echo "Testing $url..."
               start_time=$(date +%s)
-              last_download_time=0
-              max_download_time=10  # 如果下载时间超过 10 秒则认为可用
 
-              # 使用 curl 测试链接，增加最大时间 20 秒，并监控下载流量
-              curl -s --max-time 20 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-              curl_code=$?
+              # 提取主机和端口
+              host=$(echo $url | cut -d'/' -f3)
+              port=$(echo $url | cut -d':' -f2)
+
+              # 使用 nc 来测试 TCP 连接
+              timeout 10 nc -z -v "$host" "$port"
+              nc_code=$?
 
               end_time=$(date +%s)
               elapsed=$(( end_time - start_time ))
 
-              if [[ $curl_code -eq 0 ]]; then
-                # 如果下载持续时间 >= 10 秒
-                if [[ $elapsed -ge $max_download_time ]]; then
-                  echo "✅ $url - 可用（持续下载 ${elapsed} 秒）" >> "$output_file"
+              if [[ $nc_code -eq 0 ]]; then
+                if [[ $elapsed -ge 10 ]]; then
+                  echo "✅ $url - 可用（持续连接 ${elapsed} 秒）" >> "$output_file"
                 else
-                  echo "⚠️ $url - 有拦截（${elapsed} 秒内下载结束）" >> "$output_file"
+                  echo "⚠️ $url - 有拦截（${elapsed} 秒内连接结束）" >> "$output_file"
                 fi
-              elif [[ $curl_code -eq 28 ]]; then
-                # 处理超时情况
-                echo "❌ $url - 无法访问（curl 错误码 28: 超时）" >> "$output_file"
               else
-                echo "❌ $url - 无法访问（curl 错误码 $curl_code）" >> "$output_file"
+                echo "❌ $url - 无法连接（nc 错误码 $nc_code）" >> "$output_file"
               fi
             done < "$input_file"
           }
