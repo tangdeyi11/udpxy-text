@@ -25,13 +25,17 @@ jobs:
             echo "Testing $url..."
             start_time=$(date +%s)
 
-            curl -s --max-time 15 "$url" -o /dev/null
+            # 增加超时处理，确保 curl 请求更长时间等待响应
+            curl -s --max-time 30 "$url" -o /dev/null
             curl_code=$?
             end_time=$(date +%s)
             elapsed=$((end_time - start_time))
 
+            # 记录 curl 错误代码，并进行详细的错误处理
             if [[ $curl_code -eq 7 ]]; then
               echo "❌ $url - 无法连接（curl 错误码 7）" >> "$output_file"
+            elif [[ $curl_code -eq 28 ]]; then
+              echo "❌ $url - 请求超时（curl 错误码 28）" >> "$output_file"
             elif [[ $curl_code -eq 0 ]]; then
               if [[ $elapsed -ge 10 ]]; then
                 echo "✅ $url - 可用（持续下载 ${elapsed} 秒）" >> "$output_file"
