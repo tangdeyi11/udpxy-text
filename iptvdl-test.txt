@@ -1,3 +1,102 @@
-🔍 Testing links from iptvdl.txt...
-❌ http://113.226.124.30:4022/udp/232.0.0.27:8808 - 无法访问（连接失败）
-⚠️ http://42.86.203.91:8181/udp/232.0.0.27:8808 - 有拦截（10秒内下载结束）
+name: Test IPTV Links
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write  # 允许对仓库内容进行写操作
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Download links from GitHub
+        run: |
+          # 下载 IPTV 和 IPTVDL 链接到根目录
+          curl -L -o iptv.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptv.txt
+          curl -L -o iptvdl.txt https://raw.githubusercontent.com/tangdeyi11/udpxy-text/main/iptvdl.txt
+
+      - name: Initialize output files
+        run: |
+          # 如果文件不存在，则初始化文件
+          touch iptv-test.txt iptvdl-test.txt
+
+      # 串行执行 IPTV 链接测试
+      - name: Test IPTV links
+        run: |
+          input_file="iptv.txt"
+          output_file="iptv-test.txt"
+          echo "🔍 Testing links from $input_file..." > "$output_file"
+          
+          export OUTPUT_FILE="$output_file"  # 传递为环境变量供 subshell 使用
+
+          cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            if timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            else
+              code=$?
+              if [ $code -eq 124 ]; then
+                status="⚠️ $url - 有拦截（10秒内下载结束）"
+              else
+                status="❌ $url - 无法访问（连接失败）"
+              fi
+            fi
+            echo "$status" >> "$OUTPUT_FILE"
+          '
+
+      # 串行执行 IPTVDL 链接测试
+      - name: Test IPTVDL links
+        run: |
+          input_file="iptvdl.txt"
+          output_file="iptvdl-test.txt"
+          echo "🔍 Testing links from $input_file..." > "$output_file"
+          
+          export OUTPUT_FILE="$output_file"  # 传递为环境变量供 subshell 使用
+
+          cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            if timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            else
+              code=$?
+              if [ $code -eq 124 ]; then
+                status="⚠️ $url - 有拦截（10秒内下载结束）"
+              else
+                status="❌ $url - 无法访问（连接失败）"
+              fi
+            fi
+            echo "$status" >> "$OUTPUT_FILE"
+          '
+
+      # 拉取远程仓库的更改，避免推送冲突
+      - name: Pull remote changes and rebase
+        run: |
+          git fetch origin
+          git pull --rebase origin main
+
+      # 提交并推送测试结果文件到 GitHub 仓库
+      - name: Commit and push results for IPTV
+        run: |
+          git add --force iptv-test.txt
+          git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
+          git push origin main  # 推送到远程仓库
+
+      - name: Commit and push results for IPTVDL
+        run: |
+          git add --force iptvdl-test.txt
+          git commit -m "📡 自动更新 IPTVDL 测试结果" || echo "Nothing to commit"
+          git push origin main  # 推送到远程仓库
