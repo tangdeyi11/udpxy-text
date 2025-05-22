@@ -20,6 +20,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y curl
 
+    - name: Set Git identity
+      run: |
+        git config --global user.email "github-actions@github.com"
+        git config --global user.name "github-actions"
+
     - name: Test IPTV links
       run: |
         echo "🔍 Testing IPTV links..." > iptv-test.txt
