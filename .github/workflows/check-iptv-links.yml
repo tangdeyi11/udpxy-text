@@ -1,27 +1,22 @@
-name: 📡 检测 IPTV 可用性
+name: Check IPTV Links
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 每天 10:00（北京时间）运行
-  workflow_dispatch:     # 支持手动运行
+    - cron: '0 */6 * * *'  # 每 6 小时运行一次（UTC 时间）
+  workflow_dispatch:        # 支持手动触发
 
 permissions:
-  contents: write        # ✅ 允许 GitHub Actions 推送更改
+  contents: write  # ✅ 允许提交结果文件
 
 jobs:
-  check-iptv:
+  test-iptv:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Git identity
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Run IPTV availability check
+      - name: 🧪 Test IPTV links and generate results
         run: |
           test_links() {
             input_file="$1"
@@ -37,30 +32,42 @@ jobs:
               echo "Testing $url..."
               start_time=$(date +%s)
 
-              curl -s --max-time 15 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
+              curl -s --max-time 15 "$url" -o /dev/null
               curl_code=$?
+
               end_time=$(date +%s)
               elapsed=$(( end_time - start_time ))
 
               if [[ $curl_code -eq 0 ]]; then
-                if [[ $elapsed -lt 10 ]]; then
-                  echo "⚠️ $url - 有拦截（${elapsed}秒内下载结束）" >> "$output_file"
+                if [[ $elapsed -ge 10 ]]; then
+                  echo "✅ $url - 可用（持续下载 ${elapsed} 秒）" >> "$output_file"
                 else
-                  echo "✅ $url - 可用（持续下载${elapsed}秒）" >> "$output_file"
+                  echo "⚠️ $url - 有拦截（${elapsed} 秒内下载结束）" >> "$output_file"
+                fi
+              elif [[ $curl_code -eq 28 ]]; then
+                if [[ $elapsed -ge 10 ]]; then
+                  echo "✅ $url - 可用（下载持续 ${elapsed} 秒但最终超时）" >> "$output_file"
+                else
+                  echo "⚠️ $url - 有拦截或早期断流（${elapsed} 秒内超时）" >> "$output_file"
                 fi
               else
                 echo "❌ $url - 无法访问（curl 错误码 $curl_code）" >> "$output_file"
               fi
-
             done < "$input_file"
           }
 
-          # 执行检测
           test_links "iptv.txt" "iptv-test.txt"
           test_links "iptvdl.txt" "iptvdl-test.txt"
 
-      - name: Commit and push results
+      - name: 📤 Commit and push results
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add iptv-test.txt iptvdl-test.txt
-          git commit -m "📡 自动更新 IPTV 测试结果 $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "✅ No changes to commit"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add --force iptv-test.txt iptvdl-test.txt
+          git commit -m "📡 自动更新 IPTV 测试结果 $(date -u '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          
+          git pull --rebase
           git push
