@@ -12,10 +12,6 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        file: [iptv, iptvdl]  # 分别处理 'iptv.txt' 和 'iptvdl.txt' 文件
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -36,12 +32,13 @@ jobs:
           # 如果文件不存在，则初始化文件
           touch iptv-test.txt iptvdl-test.txt
 
-      - name: Test links in parallel
+      # 串行执行 IPTV 链接测试
+      - name: Test IPTV links
         run: |
-          input_file="${{ matrix.file }}.txt"
-          output_file="${{ matrix.file }}-test.txt"
+          input_file="iptv.txt"
+          output_file="iptv-test.txt"
           echo "🔍 Testing links from $input_file..." > "$output_file"
-
+          
           export OUTPUT_FILE="$output_file"  # 传递为环境变量供 subshell 使用
 
           cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
@@ -60,21 +57,44 @@ jobs:
             echo "$status" >> "$OUTPUT_FILE"
           '
 
-      - name: Verify the output files
+      # 串行执行 IPTVDL 链接测试
+      - name: Test IPTVDL links
         run: |
-          echo "Verifying the output files in the root directory"
-          ls -l iptv-test.txt iptvdl-test.txt
-          cat iptv-test.txt
-          cat iptvdl-test.txt
+          input_file="iptvdl.txt"
+          output_file="iptvdl-test.txt"
+          echo "🔍 Testing links from $input_file..." > "$output_file"
+          
+          export OUTPUT_FILE="$output_file"  # 传递为环境变量供 subshell 使用
 
-      - name: Commit and push results
+          cat "$input_file" | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
+            url="{}"
+            status="⏳ $url - 测试中..."
+            if timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null; then
+              status="✅ $url - 可用（10秒内持续下载）"
+            else
+              code=$?
+              if [ $code -eq 124 ]; then
+                status="⚠️ $url - 有拦截（10秒内下载结束）"
+              else
+                status="❌ $url - 无法访问（连接失败）"
+              fi
+            fi
+            echo "$status" >> "$OUTPUT_FILE"
+          '
+
+      # 提交并推送测试结果文件到 GitHub 仓库
+      - name: Commit and push results for IPTV
         run: |
-          # 确保文件被正确创建并添加到 Git 仓库
-          echo "Verifying the output files before committing"
-          ls -l iptv-test.txt iptvdl-test.txt
-          git add --force iptv-test.txt iptvdl-test.txt  # 强制添加文件到 Git
-          git status  # 查看 Git 当前状态
+          git fetch origin  # 获取最新的远程分支信息
+          git pull origin main --rebase  # 拉取远程 main 分支的最新更改并重放本地更改
+          git add --force iptv-test.txt
           git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 使用 GITHUB_TOKEN
+          git push origin main  # 推送到远程仓库
+
+      - name: Commit and push results for IPTVDL
+        run: |
+          git fetch origin  # 获取最新的远程分支信息
+          git pull origin main --rebase  # 拉取远程 main 分支的最新更改并重放本地更改
+          git add --force iptvdl-test.txt
+          git commit -m "📡 自动更新 IPTVDL 测试结果" || echo "Nothing to commit"
+          git push origin main  # 推送到远程仓库
