@@ -44,13 +44,21 @@ jobs:
               status="❌ $url - 无法访问（连接失败）"
             fi
             echo "$status" >> "$output_file"
-          ' _ {} "$output_file"
+          ' {} "$output_file"
 
       - name: Commit and push test results
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add iptv-test.txt iptvdl-test.txt
+
+          if [ -f "iptv-test.txt" ]; then
+            git add iptv-test.txt
+          fi
+
+          if [ -f "iptvdl-test.txt" ]; then
+            git add iptvdl-test.txt
+          fi
+
           git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
           git push
         env:
