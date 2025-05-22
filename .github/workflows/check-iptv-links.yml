@@ -52,11 +52,20 @@ jobs:
             echo "$status" >> "$OUTPUT_FILE"
           '
 
+      - name: Verify the output files
+        run: |
+          echo "Verifying the output files"
+          ls -l iptv-test.txt iptvdl-test.txt
+          cat iptv-test.txt
+          cat iptvdl-test.txt
+
       - name: Commit and push results
         run: |
-          git add iptv-test.txt iptvdl-test.txt
+          echo "Verifying the output files before committing"
+          ls -l iptv-test.txt iptvdl-test.txt
+          git add --force iptv-test.txt iptvdl-test.txt
+          git status  # 查看 Git 当前状态
           git commit -m "📡 自动更新 IPTV 测试结果" || echo "Nothing to commit"
           git push
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
