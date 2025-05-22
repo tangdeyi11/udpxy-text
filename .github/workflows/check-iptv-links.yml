@@ -1,79 +1,27 @@
-name: 自动更新 IPTV 测试结果
-
-on:
-  schedule:
-    - cron: '0 */6 * * *'  # 每6小时执行一次（UTC 时间）
-  workflow_dispatch:        # 支持手动触发运行
-
-permissions:
-  contents: write  # ✅ 允许 GitHub Actions 向代码仓库写入内容
-
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout the repository
-      uses: actions/checkout@v2
+      - name: Checkout the repository
+        uses: actions/checkout@v2
 
-    - name: Install curl and other dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y curl
+      - name: Set Git identity
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
 
-    - name: Set Git identity
-      run: |
-        git config --global user.email "github-actions@github.com"
-        git config --global user.name "github-actions"
+      - name: Pull the latest changes
+        run: |
+          git pull origin main --rebase
 
-    - name: Test IPTV links
-      run: |
-        echo "🔍 Testing IPTV links..." > iptv-test.txt
-        cat iptv.txt | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
-          url="{}"
-          status="⏳ $url - 测试中..."
-          timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-          CODE=$?
-          if [ $CODE -eq 0 ]; then
-            status="✅ $url - 可用（10秒内持续下载）"
-          elif [ $CODE -eq 124 ]; then
-            status="⚠️ $url - 有拦截（10秒内下载结束）"
-          else
-            status="❌ $url - 无法访问（连接失败）"
-          fi
-          echo "$status" >> iptv-test.txt
-        '
+      # 接下来的测试和推送步骤
+      - name: Test IPTV links
+        run: |
+          # 测试链接的代码
 
-    - name: Test IPTVDL links
-      run: |
-        echo "🔍 Testing IPTVDL links..." > iptvdl-test.txt
-        cat iptvdl.txt | grep -v '^#' | grep -v '^$' | xargs -I {} -P 10 bash -c '
-          url="{}"
-          status="⏳ $url - 测试中..."
-          timeout 10s curl -s --max-time 12 --speed-time 5 --speed-limit 1024 "$url" -o /dev/null
-          CODE=$?
-          if [ $CODE -eq 0 ]; then
-            status="✅ $url - 可用（10秒内持续下载）"
-          elif [ $CODE -eq 124 ]; then
-            status="⚠️ $url - 有拦截（10秒内下载结束）"
-          else
-            status="❌ $url - 无法访问（连接失败）"
-          fi
-          echo "$status" >> iptvdl-test.txt
-        '
-
-    - name: Commit and push results for IPTV
-      run: |
-        git add --force iptv-test.txt
-        git commit --amend --no-edit -m "📡 自动更新 IPTV 测试结果"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 自动使用 GitHub 生成的 Token
-
-    - name: Commit and push results for IPTVDL
-      run: |
-        git add --force iptvdl-test.txt
-        git commit --amend --no-edit -m "📡 自动更新 IPTVDL 测试结果"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 自动使用 GitHub 生成的 Token
+      - name: Commit and push results
+        run: |
+          git add --force iptv-test.txt
+          git commit --amend --no-edit -m "📡 自动更新 IPTV 测试结果"
+          git push
