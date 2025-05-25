@@ -1,7 +1,7 @@
 name: IPTV udpxy 流检测
 
 permissions:
-  contents: write   # 明确授予写仓库权限
+  contents: write       # 明确授予写仓库权限
 
 on:
   workflow_dispatch:
@@ -33,8 +33,8 @@ jobs:
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add iptv-test.json
-        git diff --cached --quiet || git commit -m "Update IPTV test result"
+        git add iptv-test.json iptvdl-test.json
+        git diff --cached --quiet || git commit -m "Update IPTV test results"
         git push origin HEAD
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
