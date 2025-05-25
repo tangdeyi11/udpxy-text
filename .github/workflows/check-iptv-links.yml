@@ -1,36 +1,37 @@
 name: IPTV udpxy 流检测
 
 on:
-  workflow_dispatch:  # 支持手动触发
-  # schedule:
-  #   - cron: '*/30 * * * *'  # 每30分钟执行一次（可根据需要调整）
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'
 
 jobs:
   test-iptv-stream:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 🚚 检出仓库
+    - name: 检出仓库
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 🐍 设置 Python
+    - name: 设置 Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: 📦 安装依赖
+    - name: 安装依赖
       run: pip install requests
 
-    - name: 🧪 执行 IPTV 流检测脚本
+    - name: 执行检测脚本
       run: python check_udpxy.py
 
-    - name: 📝 提交测试结果到仓库
+    - name: 提交检测结果
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add iptv-test.txt
-        git commit -m "Update IPTV test result"
-        git push
+        git diff --cached --quiet || git commit -m "Update IPTV test result"
+        git push origin HEAD
       env:
-        # 使用 GitHub 自动生成的 token 进行 push（默认可以推送到主分支）
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
