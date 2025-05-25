@@ -1,5 +1,8 @@
 name: IPTV udpxy 流检测
 
+permissions:
+  contents: write   # 明确授予写仓库权限
+
 on:
   workflow_dispatch:
   schedule:
@@ -10,23 +13,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 检出仓库
+    - name: 检出仓库代码
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 设置 Python
+    - name: 设置 Python 环境
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: 安装依赖
+    - name: 安装依赖包
       run: pip install requests
 
-    - name: 执行检测脚本
+    - name: 运行 IPTV 流检测脚本
       run: python check_udpxy.py
 
-    - name: 提交检测结果
+    - name: 提交并推送检测结果
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
