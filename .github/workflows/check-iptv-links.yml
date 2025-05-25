@@ -1,73 +1,36 @@
-name: Check IPTV Links
+name: IPTV udpxy 流检测
 
 on:
+  workflow_dispatch:  # 支持手动触发
   # schedule:
-  #  - cron: '0 */6 * * *'  # 每 6 小时执行一次（UTC）
-  workflow_dispatch:       # 支持手动触发
-
-permissions:
-  contents: write          # ✅ 允许写入代码仓库内容
+  #   - cron: '*/30 * * * *'  # 每30分钟执行一次（可根据需要调整）
 
 jobs:
-  check-links:
+  test-iptv-stream:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: 🚚 检出仓库
+      uses: actions/checkout@v3
 
-      - name: Test IPTV links
-        run: |
-          test_url() {
-            local url="$1"
-            local output_file="$2"
+    - name: 🐍 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-            echo "Testing $url..."
-            start_time=$(date +%s)
+    - name: 📦 安装依赖
+      run: pip install requests
 
-            # 增加超时处理，确保 curl 请求更长时间等待响应
-            curl -s --max-time 30 "$url" -o /dev/null
-            curl_code=$?
-            end_time=$(date +%s)
-            elapsed=$((end_time - start_time))
+    - name: 🧪 执行 IPTV 流检测脚本
+      run: python check_udpxy.py
 
-            # 记录 curl 错误代码，并进行详细的错误处理
-            if [[ $curl_code -eq 7 ]]; then
-              echo "❌ $url - 无法连接（curl 错误码 7）" >> "$output_file"
-            elif [[ $curl_code -eq 28 ]]; then
-              echo "❌ $url - 请求超时（curl 错误码 28）" >> "$output_file"
-            elif [[ $curl_code -eq 0 ]]; then
-              if [[ $elapsed -ge 10 ]]; then
-                echo "✅ $url - 可用（持续下载 ${elapsed} 秒）" >> "$output_file"
-              else
-                echo "⚠️ $url - 有拦截（仅下载 ${elapsed} 秒）" >> "$output_file"
-              fi
-            else
-              echo "❌ $url - 异常错误（curl 错误码 $curl_code）" >> "$output_file"
-            fi
-          }
-
-          echo "🔍 Testing links from iptv.txt..." > iptv-test.txt
-          while read -r url; do
-            [[ -z "$url" || "$url" =~ ^# ]] && continue
-            test_url "$url" "iptv-test.txt"
-          done < iptv.txt
-
-          echo "🔍 Testing links from iptvdl.txt..." > iptvdl-test.txt
-          while read -r url; do
-            [[ -z "$url" || "$url" =~ ^# ]] && continue
-            test_url "$url" "iptvdl-test.txt"
-          done < iptvdl.txt
-
-      - name: Commit and push test results
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add iptv-test.txt iptvdl-test.txt
-
-          timestamp=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
-          git commit -m "📡 自动更新 IPTV 测试结果 - $timestamp" || echo "Nothing to commit"
-
-          git pull --rebase
-          git push origin main
+    - name: 📝 提交测试结果到仓库
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add iptv-test.txt
+        git commit -m "Update IPTV test result"
+        git push
+      env:
+        # 使用 GitHub 自动生成的 token 进行 push（默认可以推送到主分支）
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
