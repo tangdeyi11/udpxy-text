@@ -2,6 +2,7 @@ import requests
 import socket
 import time
 from datetime import datetime, timezone, timedelta
+import json
 
 def test_udpxy_stream(url: str, test_duration: int = 10, chunk_size: int = 1024, idle_threshold: float = 3.0) -> (str, float):
     print(f"Connecting to {url}")
@@ -42,18 +43,23 @@ def test_udpxy_stream(url: str, test_duration: int = 10, chunk_size: int = 1024,
 if __name__ == "__main__":
     url = "http://123.115.118.228:9000/udp/239.3.1.129:8008"  # 可替换
     result, last_data_elapsed = test_udpxy_stream(url, test_duration=60, idle_threshold=3.0)
-    
+
     # 获取当前UTC时间，转换为北京时间（UTC+8）
     utc_now = datetime.utcnow().replace(tzinfo=timezone.utc)
     tz_8 = timezone(timedelta(hours=8))
     beijing_now = utc_now.astimezone(tz_8)
     now_str = beijing_now.strftime("%Y-%m-%d %H:%M:%S %Z%z")
 
-    # 写入文件
-    with open("iptv-test.txt", "w", encoding="utf-8") as f:
-        f.write(f"URL: {url}\n")
-        f.write(f"Result: {result}\n")
-        f.write(f"Last Data Time: {last_data_elapsed:.1f} seconds\n")
-        f.write(f"Test Time: {now_str}\n")
+    # 准备json数据结构
+    data = {
+        "URL": url,
+        "Result": result,
+        "LastDataTimeSeconds": round(last_data_elapsed, 1),
+        "TestTime": now_str
+    }
 
-    print("Result written to iptv-test.txt")
+    # 写入json文件
+    with open("iptv-test.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+    print("Result written to iptv-test.json")
