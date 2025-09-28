@@ -107,8 +107,8 @@ def test_and_save(url_list, output_filename):
 if __name__ == "__main__":
     # 定义两个 IPTV 列表源及对应输出文件
     source_map = {
-        "https://iptv.dtcs520.ggff.net/iptvlist": "iptv-test.json",
-        "https://iptv.dtcs520.ggff.net/iptvdllist": "iptvdl-test.json"
+        "https://iptv.dtcs520.com/iptvlist": "iptv-test.json",
+        "https://iptv.dtcs520.com/iptvdllist": "iptvdl-test.json"
     }
 
     # 遍历每个源，进行测试并保存对应结果
