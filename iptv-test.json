@@ -1,62 +1,56 @@
 [
     {
-        "URL": "http://116.169.135.244:8088/udp/239.3.1.129:8008",
+        "URL": "http://221.216.137.248:30002/udp/239.3.1.129:8008",
         "Result": "Connection Error Invalid Address",
         "LastDataTimeSeconds": 0.0,
-        "TestTime": "2026-11-17 21:19:51 UTC+08:00+0800"
-    },
-    {
-        "URL": "http://221.217.124.102:8000/udp/239.3.1.129:8008",
-        "Result": "Connection Error Stream Service Stop",
-        "LastDataTimeSeconds": 0.0,
-        "TestTime": "2026-11-17 21:19:52 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:14 UTC+08:00+0800"
     },
     {
         "URL": "http://114.252.224.211:8000/udp/239.3.1.129:8008",
         "Result": "Connection Error Stream Service Stop",
         "LastDataTimeSeconds": 0.0,
-        "TestTime": "2026-11-17 21:19:52 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:15 UTC+08:00+0800"
     },
     {
         "URL": "http://111.199.238.120:4022/udp/239.3.1.129:8008",
         "Result": "Connection Error Stream Service Stop",
         "LastDataTimeSeconds": 0.0,
-        "TestTime": "2026-11-17 21:19:52 UTC+08:00+0800"
-    },
-    {
-        "URL": "http://221.217.124.77:8000/udp/239.3.1.129:8008",
-        "Result": "Connection Error Stream Service Stop",
-        "LastDataTimeSeconds": 0.0,
-        "TestTime": "2026-11-17 21:19:52 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:15 UTC+08:00+0800"
     },
     {
         "URL": "http://111.193.227.238:9999/udp/239.3.1.129:8008",
         "Result": "Connection Error Invalid Address",
         "LastDataTimeSeconds": 0.0,
-        "TestTime": "2026-11-17 21:19:53 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:16 UTC+08:00+0800"
     },
     {
-        "URL": "http://123.117.239.169:5222/udp/239.3.1.129:8008",
+        "URL": "http://114.244.64.79:4022/udp/239.3.1.129:8008",
+        "Result": "Connection Error Invalid Address",
+        "LastDataTimeSeconds": 0.0,
+        "TestTime": "2026-11-18 06:19:16 UTC+08:00+0800"
+    },
+    {
+        "URL": "http://61.49.164.102:1314/udp/239.3.1.129:8008",
         "Result": "Connection OK",
         "LastDataTimeSeconds": 10.0,
-        "TestTime": "2026-11-17 21:20:01 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:24 UTC+08:00+0800"
     },
     {
-        "URL": "http://123.112.210.241:4022/udp/239.3.1.129:8008",
-        "Result": "Connection OK",
-        "LastDataTimeSeconds": 10.1,
-        "TestTime": "2026-11-17 21:20:01 UTC+08:00+0800"
-    },
-    {
-        "URL": "http://114.254.34.197:4022/udp/239.3.1.129:8008",
+        "URL": "http://114.250.20.79:4022/udp/239.3.1.129:8008",
         "Result": "Connection OK",
         "LastDataTimeSeconds": 10.0,
-        "TestTime": "2026-11-17 21:20:01 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:24 UTC+08:00+0800"
     },
     {
-        "URL": "http://111.193.231.63:8888/udp/239.3.1.129:8008",
+        "URL": "http://222.131.113.193:8000/udp/239.3.1.129:8008",
         "Result": "Connection OK",
         "LastDataTimeSeconds": 10.0,
-        "TestTime": "2026-11-17 21:20:01 UTC+08:00+0800"
+        "TestTime": "2026-11-18 06:19:24 UTC+08:00+0800"
+    },
+    {
+        "URL": "http://124.65.1.9:20000/udp/239.3.1.129:8008",
+        "Result": "Connection OK",
+        "LastDataTimeSeconds": 10.0,
+        "TestTime": "2026-11-18 06:19:24 UTC+08:00+0800"
     }
 ]
